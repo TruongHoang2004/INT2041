@@ -52,10 +52,10 @@
 
         <ToggleButton
             android:id="@+id/isGpu"
-            android:background="@color/orange"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/white"
+            android:background="@color/orange"
+            android:textColor="@color/black"
             android:textOff="@string/gpu"
             android:textOn="@string/gpu"
             app:layout_constraintBottom_toBottomOf="parent"

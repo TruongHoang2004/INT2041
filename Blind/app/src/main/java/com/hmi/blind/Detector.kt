@@ -19,9 +19,9 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 class Detector(
     private val context: Context,
     private val modelPath: String,
-    private val labelPath: String?,
+    labelPath: String?,
     private val detectorListener: DetectorListener,
-    private val message: (String) -> Unit
+    message: (String) -> Unit
 ) {
 
     private var interpreter: Interpreter
