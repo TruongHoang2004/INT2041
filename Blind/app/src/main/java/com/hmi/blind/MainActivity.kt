@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,6 +24,9 @@ import com.hmi.blind.Constants.MODEL_PATH
 import com.hmi.blind.databinding.ActivityMainBinding
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import android.speech.tts.TextToSpeech
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     private lateinit var binding: ActivityMainBinding
@@ -34,6 +39,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     private var detector: Detector? = null
 
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var textToSpeech: TextToSpeech
+
+    private var lastSpokenLabel: String? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var speakRunnable: Runnable? = null
+    private val detectionTimestamps = ConcurrentHashMap<String, Long>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +56,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         cameraExecutor.execute {
             detector = Detector(baseContext, MODEL_PATH, LABELS_PATH, this) {
                 toast(it)
+            }
+        }
+
+        textToSpeech = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                // No locale setting
             }
         }
 
@@ -177,6 +194,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         super.onDestroy()
         detector?.close()
         cameraExecutor.shutdown()
+        textToSpeech.shutdown()
+        handler.removeCallbacksAndMessages(null)
     }
 
     override fun onResume() {
@@ -208,6 +227,28 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             binding.overlay.apply {
                 setResults(boundingBoxes)
                 invalidate()
+            }
+
+            val currentTime = System.currentTimeMillis()
+            val labels = boundingBoxes.joinToString(", ") { it.clsName }
+            detectionTimestamps[labels] = currentTime
+
+            // Remove old entries
+            detectionTimestamps.entries.removeIf { currentTime - it.value > 1000 }
+
+            // Check if any label has been detected within the last second
+            val consistentLabel = detectionTimestamps.keys.firstOrNull { label ->
+                detectionTimestamps[label]?.let { currentTime - it <= 1000 } == true
+            }
+
+            if (consistentLabel != null && consistentLabel != lastSpokenLabel) {
+                lastSpokenLabel = consistentLabel
+                speakRunnable?.let { handler.removeCallbacks(it) }
+                speakRunnable = Runnable {
+                    textToSpeech.speak(consistentLabel, TextToSpeech.QUEUE_FLUSH, null, UUID.randomUUID().toString())
+                }
+                handler.postDelayed(speakRunnable!!, 1000)
+                detectionTimestamps.clear()
             }
         }
     }

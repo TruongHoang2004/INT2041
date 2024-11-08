@@ -14,7 +14,8 @@ object MetaData {
         try {
             val metadataExtractor = MetadataExtractor(model)
             val inputStream = metadataExtractor.getAssociatedFile("temp_meta.txt")
-            val metadata = inputStream?.bufferedReader()?.use { it.readText() } ?: return emptyList()
+            val metadata =
+                inputStream?.bufferedReader()?.use { it.readText() } ?: return emptyList()
 
             val regex = Regex("'names': \\{(.*?)\\}", RegexOption.DOT_MATCHES_ALL)
 
@@ -23,7 +24,7 @@ object MetaData {
 
             val regex2 = Regex("\"([^\"]*)\"|'([^']*)'")
             val match2 = regex2.findAll(namesContent)
-            val list = match2.map { it.groupValues[1].ifEmpty { it.groupValues[2] }}.toList()
+            val list = match2.map { it.groupValues[1].ifEmpty { it.groupValues[2] } }.toList()
 
             return list
         } catch (_: Exception) {
